@@ -1,42 +1,248 @@
 
 import hashlib
-import json
 import random
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 import streamlit as st
 
 
 # ============================================================
-# Cube Runtime MVP
-# ------------------------------------------------------------
-# Demonstrates two different mechanisms:
+# CUBE RUNTIME — CONFERENCE DEMO
+# ============================================================
+# Two ideas:
 #
-# 1. Valid witness:
-#    - Real boundary is allowed.
-#    - There are multiple valid room orders.
-#    - One active chain is selected per request.
-#    - Public user sees only normal app response.
+# A) Valid witness:
+#    The real boundary is allowed, but the internal room order moves.
+#    There are many valid safe pathways; only one is active per request.
 #
-# 2. Missing witness:
-#    - Real boundary is absent.
-#    - A generated synthetic maze starts.
-#    - Each follow-up action extends the maze.
-#    - Public user sees normal-looking synthetic app state.
-#    - Operator view proves crown jewel was not reached.
+# B) Missing witness:
+#    The real boundary does not exist for that flow.
+#    The runtime generates an extendable synthetic maze.
+#    The outside user sees plausible app behaviour.
+#    The operator sees proof the crown jewel was never touched.
 # ============================================================
 
 
 st.set_page_config(
-    page_title="Cube Runtime MVP",
+    page_title="Cube Runtime Conference Demo",
     page_icon="🧊",
     layout="wide",
+    initial_sidebar_state="collapsed",
 )
 
 
 # ============================================================
-# Fake production data
+# STYLE
+# ============================================================
+
+st.markdown(
+    """
+    <style>
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+        max-width: 1500px;
+    }
+
+    div[data-testid="stToolbar"] {
+        visibility: hidden;
+        height: 0%;
+        position: fixed;
+    }
+
+    .hero {
+        padding: 2rem 2.2rem;
+        border-radius: 28px;
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 45%, #701a75 100%);
+        color: white;
+        margin-bottom: 1.2rem;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
+    }
+
+    .hero h1 {
+        font-size: 3.1rem;
+        margin: 0;
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+    }
+
+    .hero p {
+        margin-top: 0.9rem;
+        font-size: 1.15rem;
+        color: rgba(255, 255, 255, 0.84);
+        max-width: 1050px;
+    }
+
+    .tag {
+        display: inline-block;
+        padding: 0.34rem 0.72rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.82rem;
+        margin-right: 0.45rem;
+        margin-bottom: 0.45rem;
+    }
+
+    .panel {
+        padding: 1.15rem 1.2rem;
+        border-radius: 22px;
+        background: white;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+        margin-bottom: 1rem;
+    }
+
+    .panel-dark {
+        padding: 1.15rem 1.2rem;
+        border-radius: 22px;
+        background: #0f172a;
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+        margin-bottom: 1rem;
+    }
+
+    .panel h3, .panel-dark h3 {
+        margin-top: 0;
+        margin-bottom: 0.6rem;
+    }
+
+    .mini-muted {
+        color: #64748b;
+        font-size: 0.94rem;
+    }
+
+    .mini-muted-dark {
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 0.94rem;
+    }
+
+    .status-good {
+        padding: 0.75rem 1rem;
+        border-radius: 16px;
+        background: #dcfce7;
+        border: 1px solid #86efac;
+        color: #14532d;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .status-warn {
+        padding: 0.75rem 1rem;
+        border-radius: 16px;
+        background: #fef3c7;
+        border: 1px solid #fcd34d;
+        color: #78350f;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .status-bad {
+        padding: 0.75rem 1rem;
+        border-radius: 16px;
+        background: #fee2e2;
+        border: 1px solid #fca5a5;
+        color: #7f1d1d;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .status-purple {
+        padding: 0.75rem 1rem;
+        border-radius: 16px;
+        background: #f3e8ff;
+        border: 1px solid #d8b4fe;
+        color: #581c87;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .big-number {
+        font-size: 2.2rem;
+        line-height: 1;
+        font-weight: 900;
+        margin-bottom: 0.25rem;
+        letter-spacing: -0.04em;
+    }
+
+    .chain-box {
+        padding: 1rem;
+        border-radius: 18px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.92rem;
+        overflow-wrap: anywhere;
+        margin-bottom: 0.7rem;
+    }
+
+    .room {
+        display: inline-block;
+        margin: 0.22rem 0.12rem;
+        padding: 0.38rem 0.58rem;
+        border-radius: 999px;
+        background: #e0f2fe;
+        border: 1px solid #7dd3fc;
+        color: #0c4a6e;
+        font-weight: 700;
+        font-size: 0.8rem;
+    }
+
+    .room-real {
+        background: #fee2e2;
+        border-color: #fca5a5;
+        color: #7f1d1d;
+    }
+
+    .room-fake {
+        background: #f3e8ff;
+        border-color: #d8b4fe;
+        color: #581c87;
+    }
+
+    .room-broker {
+        background: #dbeafe;
+        border-color: #93c5fd;
+        color: #1e3a8a;
+    }
+
+    .room-safe {
+        background: #dcfce7;
+        border-color: #86efac;
+        color: #14532d;
+    }
+
+    .scenario-button button {
+        height: 4.2rem !important;
+        border-radius: 18px !important;
+        font-weight: 800 !important;
+        font-size: 1rem !important;
+    }
+
+    .stButton > button {
+        border-radius: 14px;
+        font-weight: 700;
+    }
+
+    .footer-note {
+        padding: 1rem 1.2rem;
+        border-radius: 18px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        font-size: 0.95rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# ============================================================
+# DATA
 # ============================================================
 
 REAL_INVOICE_DB = {
@@ -63,17 +269,10 @@ REAL_INVOICE_DB = {
     },
 }
 
-USERS = ["alice", "bob", "carla"]
-
-
-# ============================================================
-# Valid witness pathway options
-# ============================================================
-
 VALID_PATHWAYS = [
     {
-        "name": "Pathway A",
-        "description": "Classic ownership-first path",
+        "name": "Valid Chain A",
+        "description": "Ownership first, then audit, then boundary.",
         "rooms": [
             "AuthRoom",
             "OwnershipWitnessRoom",
@@ -84,21 +283,21 @@ VALID_PATHWAYS = [
         ],
     },
     {
-        "name": "Pathway B",
-        "description": "Audit and cache before real boundary",
+        "name": "Valid Chain B",
+        "description": "Audit and cache first, then ownership witness.",
         "rooms": [
             "AuthRoom",
             "AuditRoom",
-            "OwnershipWitnessRoom_v2",
             "CacheRoom",
+            "OwnershipWitnessRoom_v2",
             "InvoiceReadRoom_v2",
             "BoundaryBroker",
             "RealInvoiceBoundary",
         ],
     },
     {
-        "name": "Pathway C",
-        "description": "Risk and lineage enriched path",
+        "name": "Valid Chain C",
+        "description": "Risk and lineage enriched route.",
         "rooms": [
             "AuthRoom",
             "RiskContextRoom",
@@ -110,8 +309,8 @@ VALID_PATHWAYS = [
         ],
     },
     {
-        "name": "Pathway D",
-        "description": "Replica read with post-boundary audit",
+        "name": "Valid Chain D",
+        "description": "Replica read with post-boundary audit.",
         "rooms": [
             "AuthRoom",
             "OwnershipWitnessRoom_v3",
@@ -122,11 +321,6 @@ VALID_PATHWAYS = [
         ],
     },
 ]
-
-
-# ============================================================
-# Missing witness synthetic room options
-# ============================================================
 
 SYNTHETIC_ROOM_CATALOG = {
     "SyntheticInvoiceRoom": {
@@ -165,16 +359,16 @@ SYNTHETIC_ROOM_CATALOG = {
 
 
 # ============================================================
-# Session state
+# STATE
 # ============================================================
 
 def init_state() -> None:
     defaults = {
         "run_counter": 0,
         "latest_event": None,
-        "evidence_log": [],
         "maze_state": None,
-        "public_history": [],
+        "evidence_log": [],
+        "active_demo": "none",
     }
 
     for key, value in defaults.items():
@@ -186,7 +380,7 @@ init_state()
 
 
 # ============================================================
-# Helpers
+# CORE LOGIC
 # ============================================================
 
 def stable_hash(*parts: Any, length: int = 16) -> str:
@@ -194,9 +388,8 @@ def stable_hash(*parts: Any, length: int = 16) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:length]
 
 
-def seeded_rng(*parts: Any) -> random.Random:
-    seed = stable_hash(*parts, length=24)
-    return random.Random(seed)
+def rng_for(*parts: Any) -> random.Random:
+    return random.Random(stable_hash(*parts, length=24))
 
 
 def utc_now() -> str:
@@ -205,19 +398,16 @@ def utc_now() -> str:
 
 def ownership_witness(user: str, invoice_id: str) -> bool:
     invoice = REAL_INVOICE_DB.get(invoice_id)
-    if not invoice:
-        return False
-    return invoice["owner"] == user
+    return bool(invoice and invoice["owner"] == user)
 
 
 def choose_valid_pathway(user: str, invoice_id: str, run_counter: int) -> Dict[str, Any]:
-    rng = seeded_rng("valid_pathway", user, invoice_id, run_counter)
+    rng = rng_for("valid", user, invoice_id, run_counter)
     return rng.choice(VALID_PATHWAYS)
 
 
-def make_real_invoice_response(user: str, invoice_id: str) -> Dict[str, Any]:
+def real_invoice_response(user: str, invoice_id: str) -> Dict[str, Any]:
     invoice = REAL_INVOICE_DB[invoice_id]
-
     return {
         "invoice_id": invoice_id,
         "customer": invoice["customer"],
@@ -229,56 +419,52 @@ def make_real_invoice_response(user: str, invoice_id: str) -> Dict[str, Any]:
     }
 
 
-def start_generated_maze(user: str, invoice_id: str, run_counter: int) -> Dict[str, Any]:
-    rng = seeded_rng("maze_start", user, invoice_id, run_counter)
-
+def start_maze(user: str, invoice_id: str, run_counter: int) -> Dict[str, Any]:
+    rng = rng_for("maze_start", user, invoice_id, run_counter)
     first_room = rng.choice(list(SYNTHETIC_ROOM_CATALOG.keys()))
 
     return {
         "maze_id": "maze_" + stable_hash(user, invoice_id, run_counter, length=10),
         "user": user,
         "invoice_id": invoice_id,
-        "created_at": utc_now(),
         "rooms": ["AuthRoom", "InvoiceIntentRoom", first_room],
         "choices": [],
         "depth": 1,
-        "max_depth": 12,
+        "max_depth": 15,
+        "created_at": utc_now(),
     }
 
 
-def extend_generated_maze(maze: Dict[str, Any], choice: str) -> Dict[str, Any]:
-    current_depth = maze["depth"]
-    rng = seeded_rng("maze_extend", maze["maze_id"], choice, current_depth)
+def extend_maze(choice: str) -> Dict[str, Any]:
+    maze = st.session_state.maze_state
+    if not maze:
+        raise RuntimeError("No generated maze is active.")
 
-    room_names = list(SYNTHETIC_ROOM_CATALOG.keys())
-
-    # Make it feel like rooms move by selecting from the catalogue each step,
-    # but avoid repeating the immediately previous room where possible.
+    rng = rng_for("maze_extend", maze["maze_id"], choice, maze["depth"])
     previous = maze["rooms"][-1]
-    candidates = [r for r in room_names if r != previous]
+    candidates = [r for r in SYNTHETIC_ROOM_CATALOG.keys() if r != previous]
     next_room = rng.choice(candidates)
 
     updated = dict(maze)
     updated["rooms"] = list(maze["rooms"]) + [next_room]
     updated["choices"] = list(maze["choices"]) + [choice]
-    updated["depth"] = current_depth + 1
-
+    updated["depth"] = maze["depth"] + 1
+    st.session_state.maze_state = updated
     return updated
 
 
-def generate_synthetic_response(maze: Dict[str, Any]) -> Dict[str, Any]:
+def synthetic_response(maze: Dict[str, Any]) -> Dict[str, Any]:
     current_room = maze["rooms"][-1]
-    room_meta = SYNTHETIC_ROOM_CATALOG.get(current_room, {})
-
-    rng = seeded_rng("synthetic_response", maze["maze_id"], current_room, maze["depth"])
+    meta = SYNTHETIC_ROOM_CATALOG.get(current_room, {})
+    rng = rng_for("synthetic_response", maze["maze_id"], current_room, maze["depth"])
 
     statuses = [
         "processing",
         "reconciling",
-        "under_review",
         "queued",
-        "export_pending",
+        "under_review",
         "policy_review",
+        "export_pending",
         "audit_sync_pending",
     ]
 
@@ -291,26 +477,20 @@ def generate_synthetic_response(maze: Dict[str, Any]) -> Dict[str, Any]:
         "Blue River Holdings",
     ]
 
-    lures = room_meta.get("lures", ["status", "continue", "details"])
-
     links = {}
-    for lure in lures:
-        cursor = stable_hash(maze["maze_id"], current_room, lure, maze["depth"], length=8)
-        links[lure] = f"/invoice/{maze['invoice_id']}/{lure}?cursor={cursor}"
-
-    if maze["depth"] >= maze["max_depth"]:
-        links = {
-            "status": f"/invoice/{maze['invoice_id']}/status?cursor=terminal"
-        }
+    if maze["depth"] < maze["max_depth"]:
+        for lure in meta.get("lures", ["status", "continue", "details"]):
+            cursor = stable_hash(maze["maze_id"], current_room, lure, maze["depth"], length=8)
+            links[lure] = f"/invoice/{maze['invoice_id']}/{lure}?cursor={cursor}"
 
     return {
         "invoice_id": maze["invoice_id"],
-        "view": room_meta.get("public_label", "generated state"),
+        "view": meta.get("public_label", "generated state"),
         "customer": rng.choice(fake_customers),
-        "amount": rng.randint(500, 25000),
+        "amount": rng.randint(400, 26000),
         "status": rng.choice(statuses),
-        "synthetic": True,
         "message": "Your request is being processed.",
+        "synthetic": True,
         "links": links,
     }
 
@@ -319,18 +499,17 @@ def behavioural_signature(maze: Dict[str, Any]) -> Dict[str, Any]:
     choices = maze.get("choices", [])
     rooms = maze.get("rooms", [])
 
-    choice_text = " ".join(choices).lower()
-    room_text = " ".join(rooms).lower()
+    text = " ".join(choices + rooms).lower()
 
-    preferred_lure = "status/orbit"
-    for lure in ["download", "export", "audit", "payment", "approval", "hash"]:
-        if lure in choice_text or lure in room_text:
-            preferred_lure = lure
+    preferred = "status/orbit"
+    for lure in ["download", "export", "audit", "payment", "approval", "hash", "events"]:
+        if lure in text:
+            preferred = lure
             break
 
     return {
         "risk_pattern": "missing_witness_object_probe",
-        "preferred_lure": preferred_lure,
+        "preferred_lure": preferred,
         "generated_rooms_visited": len(rooms),
         "choices_made": choices,
         "attempted_resource": maze["invoice_id"],
@@ -338,158 +517,153 @@ def behavioural_signature(maze: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def create_valid_event(user: str, invoice_id: str, run_counter: int) -> Dict[str, Any]:
-    pathway = choose_valid_pathway(user, invoice_id, run_counter)
-    response = make_real_invoice_response(user, invoice_id)
+def event_for_valid(user: str, invoice_id: str) -> Dict[str, Any]:
+    st.session_state.run_counter += 1
+    run_counter = st.session_state.run_counter
 
-    inactive = [
-        p for p in VALID_PATHWAYS
-        if p["name"] != pathway["name"]
-    ]
+    pathway = choose_valid_pathway(user, invoice_id, run_counter)
+    inactive = [p for p in VALID_PATHWAYS if p["name"] != pathway["name"]]
 
     return {
         "timestamp": utc_now(),
-        "mode": "VALID_WITNESS_MOVING_REAL_PATHWAY",
+        "demo_type": "valid_witness",
+        "headline": "Valid witness: moving real pathway",
         "user": user,
         "invoice_id": invoice_id,
         "witness_present": True,
         "real_boundary_reached": True,
+        "synthetic_maze_active": False,
         "crown_jewel": "RealInvoiceBoundary",
         "active_pathway_name": pathway["name"],
         "active_pathway_description": pathway["description"],
         "active_chain": pathway["rooms"],
         "inactive_valid_pathways": inactive,
-        "synthetic_maze_active": False,
-        "response": response,
-        "public_user_knows_internal_room": False,
-        "operator_can_inspect_chain": True,
+        "response": real_invoice_response(user, invoice_id),
+        "operator_claim": "One real chain is active, but the room order can change between valid requests.",
+        "outsider_claim": "The outside user sees only a normal invoice response, not the room map.",
     }
 
 
-def create_missing_event(user: str, invoice_id: str, run_counter: int) -> Dict[str, Any]:
-    maze = start_generated_maze(user, invoice_id, run_counter)
-    st.session_state.maze_state = maze
+def event_for_missing(user: str, invoice_id: str) -> Dict[str, Any]:
+    st.session_state.run_counter += 1
+    run_counter = st.session_state.run_counter
 
-    response = generate_synthetic_response(maze)
+    maze = start_maze(user, invoice_id, run_counter)
+    st.session_state.maze_state = maze
 
     return {
         "timestamp": utc_now(),
-        "mode": "MISSING_WITNESS_GENERATED_MAZE",
+        "demo_type": "missing_witness",
+        "headline": "Missing witness: generated synthetic maze",
         "user": user,
         "invoice_id": invoice_id,
         "witness_present": False,
         "real_boundary_reached": False,
+        "synthetic_maze_active": True,
         "crown_jewel": "RealInvoiceBoundary",
-        "active_pathway_name": "Generated synthetic maze",
-        "active_pathway_description": "No real boundary is available for this flow.",
+        "active_pathway_name": "Generated maze",
+        "active_pathway_description": "No real chain to the crown jewel exists for this flow.",
         "active_chain": maze["rooms"],
         "inactive_valid_pathways": [],
-        "synthetic_maze_active": True,
         "maze": maze,
+        "response": synthetic_response(maze),
         "behavioural_signature": behavioural_signature(maze),
-        "response": response,
-        "public_user_knows_internal_room": False,
-        "operator_can_inspect_chain": True,
+        "operator_claim": "The generated path can extend, but the real boundary is absent.",
+        "outsider_claim": "The outside user sees plausible app states and links, not the true room map.",
     }
 
 
-def run_request(user: str, invoice_id: str) -> Dict[str, Any]:
-    st.session_state.run_counter += 1
-    run_counter = st.session_state.run_counter
+def event_for_maze_follow(choice: str) -> Dict[str, Any]:
+    maze = extend_maze(choice)
 
-    witness = ownership_witness(user, invoice_id)
-
-    if witness:
-        st.session_state.maze_state = None
-        event = create_valid_event(user, invoice_id, run_counter)
-    else:
-        event = create_missing_event(user, invoice_id, run_counter)
-
-    st.session_state.latest_event = event
-    st.session_state.evidence_log.insert(0, event)
-    st.session_state.public_history.insert(0, {
-        "timestamp": event["timestamp"],
-        "response": event["response"],
-    })
-
-    return event
-
-
-def follow_generated_link(choice: str) -> Dict[str, Any]:
-    maze = st.session_state.maze_state
-
-    if not maze:
-        raise RuntimeError("No generated maze is active.")
-
-    updated_maze = extend_generated_maze(maze, choice)
-    st.session_state.maze_state = updated_maze
-
-    response = generate_synthetic_response(updated_maze)
-
-    event = {
+    return {
         "timestamp": utc_now(),
-        "mode": "MISSING_WITNESS_GENERATED_MAZE_EXTENDED",
-        "user": updated_maze["user"],
-        "invoice_id": updated_maze["invoice_id"],
+        "demo_type": "missing_witness",
+        "headline": "Missing witness: generated maze extended",
+        "user": maze["user"],
+        "invoice_id": maze["invoice_id"],
         "witness_present": False,
         "real_boundary_reached": False,
-        "crown_jewel": "RealInvoiceBoundary",
-        "active_pathway_name": "Extended generated synthetic maze",
-        "active_pathway_description": "The next synthetic room was generated from the user's choice.",
-        "active_chain": updated_maze["rooms"],
-        "inactive_valid_pathways": [],
         "synthetic_maze_active": True,
-        "maze": updated_maze,
-        "behavioural_signature": behavioural_signature(updated_maze),
-        "response": response,
-        "public_user_knows_internal_room": False,
-        "operator_can_inspect_chain": True,
+        "crown_jewel": "RealInvoiceBoundary",
+        "active_pathway_name": "Generated maze extension",
+        "active_pathway_description": f"The user followed '{choice}', so another synthetic room was generated.",
+        "active_chain": maze["rooms"],
+        "inactive_valid_pathways": [],
+        "maze": maze,
+        "response": synthetic_response(maze),
+        "behavioural_signature": behavioural_signature(maze),
+        "operator_claim": "Each follow-up choice extends the maze without opening the crown jewel.",
+        "outsider_claim": "The outside user sees plausible next steps, not the internal synthetic labels.",
     }
 
+
+def set_event(event: Dict[str, Any]) -> None:
     st.session_state.latest_event = event
     st.session_state.evidence_log.insert(0, event)
-    st.session_state.public_history.insert(0, {
-        "timestamp": event["timestamp"],
-        "response": event["response"],
-    })
-
-    return event
 
 
-def graphviz_for_event(event: Dict[str, Any]) -> str:
+def reset_demo() -> None:
+    st.session_state.run_counter = 0
+    st.session_state.latest_event = None
+    st.session_state.maze_state = None
+    st.session_state.evidence_log = []
+    st.session_state.active_demo = "none"
+
+
+# ============================================================
+# VISUAL HELPERS
+# ============================================================
+
+def room_badge(room: str) -> str:
+    cls = "room-safe"
+    if room == "RealInvoiceBoundary":
+        cls = "room-real"
+    elif room == "BoundaryBroker":
+        cls = "room-broker"
+    elif any(x in room for x in ["Synthetic", "Fake", "Orbit", "Evidence", "Generated"]):
+        cls = "room-fake"
+
+    return f'<span class="room {cls}">{room}</span>'
+
+
+def room_chain_html(rooms: List[str]) -> str:
+    bits = []
+    for i, room in enumerate(rooms):
+        bits.append(room_badge(room))
+        if i < len(rooms) - 1:
+            bits.append(" → ")
+    return "".join(bits)
+
+
+def graphviz(event: Dict[str, Any]) -> str:
     rooms = event.get("active_chain", [])
-    witness = event.get("witness_present", False)
-
     lines = [
         "digraph G {",
         "rankdir=LR;",
         'graph [bgcolor="transparent"];',
         'node [shape=box, style="rounded,filled", fontname="Arial"];',
-        'edge [fontname="Arial"];',
+        'edge [fontname="Arial", color="#64748b"];',
     ]
 
     for i, room in enumerate(rooms):
-        fill = "#DCFCE7" if witness else "#F3E8FF"
-        color = "#16A34A" if witness else "#7E22CE"
-        font = "#111827"
+        fill = "#DCFCE7"
+        color = "#16A34A"
+        label = room
 
         if room == "RealInvoiceBoundary":
             fill = "#FEE2E2"
             color = "#DC2626"
             label = f"{room}\\nCROWN JEWEL"
-        elif room in {"BoundaryBroker"}:
+        elif room == "BoundaryBroker":
             fill = "#DBEAFE"
             color = "#2563EB"
-            label = room
-        elif "Synthetic" in room or "Fake" in room or "Orbit" in room or "Evidence" in room or "Generated" in room:
+        elif any(x in room for x in ["Synthetic", "Fake", "Orbit", "Evidence", "Generated"]):
             fill = "#F3E8FF"
             color = "#7E22CE"
-            label = room
-        else:
-            label = room
 
         lines.append(
-            f'"{room}_{i}" [label="{label}", fillcolor="{fill}", color="{color}", fontcolor="{font}", penwidth=2];'
+            f'"{room}_{i}" [label="{label}", fillcolor="{fill}", color="{color}", penwidth=2];'
         )
 
         if i > 0:
@@ -499,138 +673,248 @@ def graphviz_for_event(event: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def reset_demo() -> None:
-    st.session_state.run_counter = 0
-    st.session_state.latest_event = None
-    st.session_state.evidence_log = []
-    st.session_state.maze_state = None
-    st.session_state.public_history = []
+def status_box(label: str, status: str, kind: str = "good") -> None:
+    cls = {
+        "good": "status-good",
+        "bad": "status-bad",
+        "warn": "status-warn",
+        "purple": "status-purple",
+    }.get(kind, "status-good")
 
-
-# ============================================================
-# UI
-# ============================================================
-
-st.title("Cube Runtime MVP")
-st.caption(
-    "Valid witness: one active real pathway is selected from many valid room orders. "
-    "Missing witness: the real boundary is absent and a generated maze extends as the user follows links."
-)
-
-with st.sidebar:
-    st.header("Request")
-
-    user = st.selectbox("Authenticated user", USERS, index=0)
-    invoice_id = st.text_input("Requested invoice ID", value="INV-100")
-
-    st.markdown("### Try")
-    st.code(
-        "alice + INV-100 = valid witness\n"
-        "alice + INV-200 = missing witness\n"
-        "bob + INV-200 = valid witness\n"
-        "carla + INV-300 = valid witness",
-        language="text",
+    st.markdown(
+        f"""
+        <div class="{cls}">
+            <div style="font-size:0.76rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.75;">{label}</div>
+            <div style="font-size:1.15rem;">{status}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    if st.button("Run request", type="primary", use_container_width=True):
-        run_request(user, invoice_id)
 
-    if st.button("Run same request again", use_container_width=True):
-        run_request(user, invoice_id)
+# ============================================================
+# HEADER
+# ============================================================
 
-    st.divider()
+st.markdown(
+    """
+    <div class="hero">
+        <div>
+            <span class="tag">Witness-based boundary access</span>
+            <span class="tag">Moving valid pathways</span>
+            <span class="tag">Generated missing-witness maze</span>
+        </div>
+        <h1>Cube Runtime Demo</h1>
+        <p>
+        A live app pathway demonstration: with a valid witness, one authorised chain is active while room order can move.
+        With a missing witness, the real boundary is absent and an extendable synthetic maze is generated.
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-    if st.button("Reset demo", use_container_width=True):
+
+# ============================================================
+# SCENARIO CONTROLS
+# ============================================================
+
+st.markdown("## 1. Pick the demonstration")
+
+c1, c2, c3 = st.columns([1, 1, 0.75])
+
+with c1:
+    st.markdown('<div class="scenario-button">', unsafe_allow_html=True)
+    if st.button("Run VALID witness demo\nAlice → INV-100", use_container_width=True):
+        st.session_state.active_demo = "valid"
+        set_event(event_for_valid("alice", "INV-100"))
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.caption("Shows many valid room orders, one active chain, real boundary reached.")
+
+with c2:
+    st.markdown('<div class="scenario-button">', unsafe_allow_html=True)
+    if st.button("Run MISSING witness demo\nAlice → INV-200", use_container_width=True):
+        st.session_state.active_demo = "missing"
+        set_event(event_for_missing("alice", "INV-200"))
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.caption("Shows generated maze, synthetic data, no crown-jewel access.")
+
+with c3:
+    st.markdown('<div class="scenario-button">', unsafe_allow_html=True)
+    if st.button("Reset", use_container_width=True):
         reset_demo()
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.caption("Clear the demo state.")
+
 
 event = st.session_state.latest_event
 
 if not event:
-    st.info("Run a request from the sidebar.")
+    st.markdown(
+        """
+        <div class="footer-note">
+        Start with the left button for the valid-witness story, then run the missing-witness story.
+        The point is to show the two mechanisms separately.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     st.stop()
 
 
-# Top metrics
-m1, m2, m3, m4 = st.columns(4)
+# ============================================================
+# STATUS SUMMARY
+# ============================================================
 
-m1.metric("Witness", "VALID" if event["witness_present"] else "MISSING")
-m2.metric("Real boundary reached", "YES" if event["real_boundary_reached"] else "NO")
-m3.metric("Synthetic maze", "YES" if event["synthetic_maze_active"] else "NO")
-m4.metric("Public knows room?", "NO")
+st.markdown("## 2. What happened?")
+
+s1, s2, s3, s4 = st.columns(4)
+
+with s1:
+    status_box("Witness", "VALID" if event["witness_present"] else "MISSING", "good" if event["witness_present"] else "purple")
+
+with s2:
+    status_box("Real boundary", "REACHED" if event["real_boundary_reached"] else "NOT REACHED", "good" if event["real_boundary_reached"] else "bad")
+
+with s3:
+    status_box("Active chain", "REAL PATHWAY" if event["witness_present"] else "SYNTHETIC MAZE", "good" if event["witness_present"] else "purple")
+
+with s4:
+    outsider = "NO MAP LEAKED"
+    status_box("Outsider view", outsider, "warn")
 
 
-# Main views
-public_col, operator_col = st.columns([1, 1.4], gap="large")
+# ============================================================
+# MAIN DEMO AREA
+# ============================================================
 
-with public_col:
-    st.subheader("Public app response")
-    st.caption("This is what the outside user would see. It does not reveal the internal room or chain.")
+st.markdown("## 3. Public view vs operator view")
+
+public, operator = st.columns([0.9, 1.35], gap="large")
+
+with public:
+    st.markdown(
+        """
+        <div class="panel">
+            <h3>Public app response</h3>
+            <div class="mini-muted">
+            This is what the outside user sees. They do not see internal room names or the active pathway.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     st.json(event["response"])
 
     if event.get("synthetic_maze_active"):
         links = event["response"].get("links", {})
-        st.markdown("### Follow a generated link")
+        st.markdown("### Follow generated link")
 
         if not links:
-            st.warning("The generated maze reached its configured max depth.")
+            st.warning("Synthetic maze reached its configured max depth.")
         else:
-            link_cols = st.columns(max(1, min(3, len(links))))
+            cols = st.columns(max(1, min(3, len(links))))
             for i, choice in enumerate(links.keys()):
-                with link_cols[i % len(link_cols)]:
-                    if st.button(f"Follow {choice}", key=f"follow_{choice}_{event['timestamp']}"):
-                        follow_generated_link(choice)
+                with cols[i % len(cols)]:
+                    if st.button(f"Follow: {choice}", key=f"follow_{choice}_{event['timestamp']}"):
+                        set_event(event_for_maze_follow(choice))
                         st.rerun()
 
-    st.markdown("### Public response history")
-    for item in st.session_state.public_history[:5]:
-        with st.expander(item["timestamp"]):
-            st.json(item["response"])
+    st.markdown(
+        f"""
+        <div class="panel">
+            <h3>Public claim</h3>
+            <div class="mini-muted">{event['outsider_claim']}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
-with operator_col:
-    st.subheader("Operator/security view")
-    st.caption("This view proves which internal chain was active and whether the crown jewel was touched.")
+with operator:
+    st.markdown(
+        f"""
+        <div class="panel-dark">
+            <h3>Operator / security control room</h3>
+            <div class="mini-muted-dark">{event['operator_claim']}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.graphviz_chart(graphviz(event))
 
     st.markdown("### Active chain")
-    st.graphviz_chart(graphviz_for_event(event))
-
-    st.markdown("### Active chain details")
-    st.json({
-        "mode": event["mode"],
-        "active_pathway": event["active_pathway_name"],
-        "description": event["active_pathway_description"],
-        "active_chain": event["active_chain"],
-        "crown_jewel": event["crown_jewel"],
-        "real_boundary_reached": event["real_boundary_reached"],
-    })
+    st.markdown(
+        f'<div class="chain-box">{room_chain_html(event["active_chain"])}</div>',
+        unsafe_allow_html=True,
+    )
 
     if event["witness_present"]:
-        st.markdown("### Other valid room orders not active this run")
-        st.caption("The valid flow has several safe equivalent room orders, but only one is active per request.")
+        st.markdown("### Valid pathway set")
+        st.caption("Several valid room orders are allowed. Only one is active in this request.")
 
-        for pathway in event["inactive_valid_pathways"]:
-            with st.expander(pathway["name"] + " — " + pathway["description"]):
-                st.write(" → ".join(pathway["rooms"]))
+        active = event["active_pathway_name"]
+        for p in VALID_PATHWAYS:
+            prefix = "ACTIVE: " if p["name"] == active else "inactive: "
+            with st.expander(prefix + p["name"] + " — " + p["description"], expanded=p["name"] == active):
+                st.markdown(
+                    f'<div class="chain-box">{room_chain_html(p["rooms"])}</div>',
+                    unsafe_allow_html=True,
+                )
 
     else:
-        st.markdown("### Behavioural traversal signature")
-        st.caption("This is not identity proof. It is a behavioural signature of the current missing-witness flow.")
+        st.markdown("### Missing-witness behavioural signature")
         st.json(event.get("behavioural_signature", {}))
 
         st.markdown("### Maze state")
         st.json(event.get("maze", {}))
 
 
-st.divider()
+# ============================================================
+# EXPLANATION STRIP
+# ============================================================
 
-st.subheader("Evidence log")
-st.caption("Every event records whether the crown jewel was reached. Missing-witness events should always show false.")
+st.markdown("## 4. Speaker explanation")
 
-for item in st.session_state.evidence_log[:10]:
+if event["witness_present"]:
+    st.markdown(
+        """
+        <div class="footer-note">
+        <b>Valid witness story:</b> the user is authorised for this resource. The real boundary is allowed, but the
+        internal room order is not fixed. The runtime chooses one chain from a verified set of safe valid pathways.
+        The user receives the correct invoice, but the outside observer does not learn the active internal route.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+else:
+    st.markdown(
+        """
+        <div class="footer-note">
+        <b>Missing witness story:</b> the user is authenticated but not authorised for this resource. The real
+        boundary is not merely hidden; it is absent for this flow. The runtime generates a synthetic pathway with
+        plausible app states and links. Following those links extends the maze, while the crown jewel remains untouched.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# ============================================================
+# EVIDENCE LOG
+# ============================================================
+
+st.markdown("## 5. Evidence log")
+
+for item in st.session_state.evidence_log[:12]:
     title = (
-        f"{item['timestamp']} | {item['mode']} | "
+        f"{item['timestamp']} | {item['headline']} | "
         f"{item['user']} → {item['invoice_id']} | "
         f"boundary_reached={item['real_boundary_reached']}"
     )
+
     with st.expander(title):
         st.json(item)
